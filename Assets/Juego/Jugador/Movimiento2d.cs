@@ -25,6 +25,8 @@ public class Movimiento2d : MonoBehaviour
 
     private bool recibiendoDanio;
 
+    public Animator animator;
+
     private void Awake()
     {
         Controles = new();
@@ -60,6 +62,23 @@ public class Movimiento2d : MonoBehaviour
             0f,
             queesSuelo
         );
+
+        // Actualiza los parametros del Animator
+        if (animator != null)
+        {
+            animator.SetFloat("movement", Mathf.Abs(direccion.x));
+            animator.SetBool("ensuelo", enSuelo); // <--- Envia el estado del suelo al Animator
+        }
+
+        // Logica para voltear (Flip) el personaje segun la direccion de movimiento
+        if (direccion.x < 0)
+        {
+            transform.localScale = new Vector3(-1, 1, 1);
+        }
+        else if (direccion.x > 0)
+        {
+            transform.localScale = new Vector3(1, 1, 1);
+        }
     }
 
     private void FixedUpdate()
@@ -85,10 +104,13 @@ public class Movimiento2d : MonoBehaviour
     {
         Gizmos.color = Color.yellow;
 
-        Gizmos.DrawWireCube(
-            controladorSuelo.position,
-            dimensionesCaja
-        );
+        if (controladorSuelo != null)
+        {
+            Gizmos.DrawWireCube(
+                controladorSuelo.position,
+                dimensionesCaja
+            );
+        }
     }
 
     public void RecibeDanio(Vector2 direccion, int cantDanio)
