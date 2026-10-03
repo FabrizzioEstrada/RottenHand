@@ -10,9 +10,15 @@ public class EnemyController : MonoBehaviour
     private Rigidbody2D rb;
     private Vector2 movement;
 
+    private bool enMovimiento;
+
+    private Animator animator;
+
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
+
+        animator = GetComponent<Animator>();
     }
 
     void Update()
@@ -28,18 +34,33 @@ public class EnemyController : MonoBehaviour
                 player.position - transform.position
             ).normalized;
 
+            if (direction.x < 0) {
+                transform.localScale = new Vector3(-1, 1, 1);
+            }
+
+            if (direction.x > 0) {
+                transform.localScale = new Vector3(1, 1, 1);
+            }
+
             movement = new Vector2(direction.x, 0);
+
+            enMovimiento = true;
         }
 
         else
         {
             movement = Vector2.zero;
+
+            enMovimiento = false;
         }
 
         rb.MovePosition(
             rb.position + movement * speed * Time.deltaTime
         );
-    }
+
+        animator.SetBool("enMovimiento", enMovimiento);
+    }   
+
 
     private void OnCollisionStay2D(Collision2D collision)
     {
