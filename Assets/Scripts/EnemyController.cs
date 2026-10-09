@@ -9,6 +9,15 @@ public class EnemyController : MonoBehaviour
     public int cantidadDanio = 10;
     public int vida = 100;
 
+    [Header("Ataque del Zombi")]
+    public float tiempoEntreAtaques = 1.0f;
+    private float tiempoSiguienteAtaque;
+
+    [Header("Efecto de Empuje (Knockback)")]
+    public float fuerzaEmpuje = 5.0f;
+    public float duracionEmpuje = 0.2f;
+    private bool estaSiendoEmpujado;
+
     private Rigidbody2D rb;
     private Vector2 movement;
     private bool enMovimiento;
@@ -20,7 +29,6 @@ public class EnemyController : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
 
-        // Si no asignaste el Jugador desde el Inspector, lo busca automáticamente por Tag
         if (player == null)
         {
             GameObject jugadorObj = GameObject.FindGameObjectWithTag("Player");
@@ -33,8 +41,9 @@ public class EnemyController : MonoBehaviour
 
     void Update()
     {
-        if (muerto || player == null)
+        if (muerto || player == null || estaSiendoEmpujado)
         {
+            if (estaSiendoEmpujado) return;
             movement = Vector2.zero;
             enMovimiento = false;
             return;
@@ -46,7 +55,6 @@ public class EnemyController : MonoBehaviour
         {
             Vector2 direction = (player.position - transform.position).normalized;
 
-            // Voltear el zombi según su orientación
             if (direction.x < 0)
             {
                 transform.localScale = new Vector3(-1, 1, 1);
@@ -65,23 +73,26 @@ public class EnemyController : MonoBehaviour
             enMovimiento = false;
         }
 
-        // Actualizar parámetros de animación
         if (animator != null)
         {
             animator.SetBool("enMovimiento", enMovimiento);
+
+            if (enMovimiento && Time.time >= tiempoSiguienteAtaque)
+            {
+                animator.SetBool("Atacando", false);
+            }
         }
     }
 
     private void FixedUpdate()
     {
-        if (muerto || rb == null) return;
+        if (muerto || rb == null || estaSiendoEmpujado) return;
 
-        // El movimiento físico se ejecuta de manera fluida en FixedUpdate
         rb.MovePosition(rb.position + movement * speed * Time.fixedDeltaTime);
     }
 
-    // RECIBIR DAÑO DEL JUGADOR
-    public void RecibeDanio(int cantidadDanioRecibido)
+    // RECIBIR DAÑO Y APLICAR EMPUJE HACIA ATRÁS
+    public void RecibeDanio(Vector3 posicionAtacante, int cantidadDanioRecibido)
     {
         if (muerto) return;
 
@@ -91,40 +102,78 @@ public class EnemyController : MonoBehaviour
         if (vida <= 0)
         {
             Morir();
+            return;
+        }
+
+        // Aplicar fuerza de retroceso (Knockback)
+        if (rb != null)
+        {
+            estaSiendoEmpujado = true;
+
+            // Dirección horizontal hacia donde fue empujado (alejándolo del jugador)
+            float direccionHorizontal = transform.position.x - posicionAtacante.x;
+            Vector2 direccionEmpuje = new Vector2(Mathf.Sign(direccionHorizontal), 0.3f).normalized;
+
+            // Reinicia la velocidad actual y aplica el impulso
+            rb.linearVelocity = Vector2.zero;
+            rb.AddForce(direccionEmpuje * fuerzaEmpuje, ForceMode2D.Impulse);
+
+            // Detener el empuje después de un breve tiempo
+            Invoke(nameof(DetenerEmpuje), duracionEmpuje);
         }
     }
 
-    // MUERTE DEL ZOMBI
+    private void DetenerEmpuje()
+    {
+        estaSiendoEmpujado = false;
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector2.zero;
+        }
+    }
+
     private void Morir()
     {
         muerto = true;
         movement = Vector2.zero;
-
         Debug.Log("¡El zombi ha muerto!");
-
-        // Destruir el objeto enemigo
         Destroy(gameObject);
     }
 
-    // EL ZOMBI HACE DAÑO AL JUGADOR
     private void OnCollisionStay2D(Collision2D collision)
     {
-        if (muerto) return;
+        if (muerto || estaSiendoEmpujado) return;
 
-        // Verifica si colisionó con el jugador por Tag o por nombre
         if (collision.gameObject.CompareTag("Player") || collision.gameObject.name == "Jugador")
         {
-            Movimiento2d jugador = collision.gameObject.GetComponent<Movimiento2d>();
-
-            if (jugador != null)
+            if (Time.time >= tiempoSiguienteAtaque)
             {
-                Vector2 direccionDanio = new Vector2(transform.position.x, 0);
-                jugador.RecibeDanio(direccionDanio, cantidadDanio);
+                if (animator != null)
+                {
+                    animator.SetBool("Atacando", true);
+                }
+
+                Movimiento2d jugador = collision.gameObject.GetComponent<Movimiento2d>();
+                if (jugador != null)
+                {
+                    Vector2 direccionDanio = new Vector2(transform.position.x, 0);
+                    jugador.RecibeDanio(direccionDanio, cantidadDanio);
+                }
+
+                tiempoSiguienteAtaque = Time.time + tiempoEntreAtaques;
+                Invoke(nameof(ResetAtacando), 0.3f);
             }
         }
     }
 
-    // MOSTRAR RADIO DE DETECCIÓN EN ESCENA
+    private void ResetAtacando()
+    {
+        if (animator != null)
+        {
+            animator.SetBool("Atacando", false);
+        }
+    }
+
     void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.red;

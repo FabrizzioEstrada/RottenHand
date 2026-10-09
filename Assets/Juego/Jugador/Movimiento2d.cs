@@ -155,7 +155,7 @@ public class Movimiento2d : MonoBehaviour
 
                 if (zombie != null)
                 {
-                    zombie.RecibeDanio(danioAtaque);
+                    zombie.RecibeDanio(transform.position, danioAtaque);
                 }
             }
         }
