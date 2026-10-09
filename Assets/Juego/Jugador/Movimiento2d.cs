@@ -9,9 +9,9 @@ public class Movimiento2d : MonoBehaviour
 
     public Rigidbody2D rb2D;
 
-    public float velocidadMovimiento;
+    public float velocidadMovimiento = 5f;
 
-    public float fuerzasalto;
+    public float fuerzasalto = 5f;
 
     public LayerMask queesSuelo;
 
@@ -27,9 +27,20 @@ public class Movimiento2d : MonoBehaviour
 
     public Animator animator;
 
+    private bool atacando;
+
+    // Variables del ataque
+    public Transform controladorAtaque;
+
+    public float radioAtaque = 0.5f;
+
+    public int danioAtaque = 20;
+
+    public LayerMask queEsEnemigo;
+
     private void Awake()
     {
-        Controles = new();
+        Controles = new Controles();
     }
 
     private void OnEnable()
@@ -42,8 +53,8 @@ public class Movimiento2d : MonoBehaviour
     {
         if (Controles != null)
         {
-            Controles.Disable();
             Controles.Movimiento.Saltar.started -= AlSaltar;
+            Controles.Disable();
         }
     }
 
@@ -56,21 +67,24 @@ public class Movimiento2d : MonoBehaviour
     {
         direccion = Controles.Movimiento.Mover.ReadValue<Vector2>();
 
-        enSuelo = Physics2D.OverlapBox(
-            controladorSuelo.position,
-            dimensionesCaja,
-            0f,
-            queesSuelo
-        );
+        if (controladorSuelo != null)
+        {
+            enSuelo = Physics2D.OverlapBox(
+                controladorSuelo.position,
+                dimensionesCaja,
+                0f,
+                queesSuelo
+            );
+        }
 
-        // Actualiza los parametros del Animator
+        // Actualizar animaciones de movimiento
         if (animator != null)
         {
             animator.SetFloat("movement", Mathf.Abs(direccion.x));
-            animator.SetBool("ensuelo", enSuelo); // <--- Envia el estado del suelo al Animator
+            animator.SetBool("ensuelo", enSuelo);
         }
 
-        // Logica para voltear (Flip) el personaje segun la direccion de movimiento
+        // Voltear al jugador según su dirección
         if (direccion.x < 0)
         {
             transform.localScale = new Vector3(-1, 1, 1);
@@ -79,19 +93,28 @@ public class Movimiento2d : MonoBehaviour
         {
             transform.localScale = new Vector3(1, 1, 1);
         }
+
+        // Atacar con la tecla J
+        if (Keyboard.current != null && Keyboard.current.jKey.wasPressedThisFrame)
+        {
+            Atacar();
+        }
     }
 
     private void FixedUpdate()
     {
-        rb2D.linearVelocity = new Vector2(
-            direccion.x * velocidadMovimiento,
-            rb2D.linearVelocity.y
-        );
+        if (rb2D != null)
+        {
+            rb2D.linearVelocity = new Vector2(
+                direccion.x * velocidadMovimiento,
+                rb2D.linearVelocity.y
+            );
+        }
     }
 
     private void Saltar()
     {
-        if (enSuelo)
+        if (enSuelo && rb2D != null)
         {
             rb2D.AddForce(
                 new Vector2(0, fuerzasalto),
@@ -100,6 +123,72 @@ public class Movimiento2d : MonoBehaviour
         }
     }
 
+    // ATAQUE DEL JUGADOR
+    public void Atacar()
+    {
+        if (atacando)
+        {
+            return;
+        }
+
+        atacando = true;
+
+        // Activa el parámetro "Atacando" (bool) del Animator
+        if (animator != null)
+        {
+            animator.SetBool("Atacando", true);
+        }
+
+        // Detección de enemigos
+        if (controladorAtaque != null)
+        {
+            Collider2D[] enemigos = Physics2D.OverlapCircleAll(
+                controladorAtaque.position,
+                radioAtaque,
+                queEsEnemigo
+            );
+
+            foreach (Collider2D enemigo in enemigos)
+            {
+                // Buscar el script del enemigo
+                EnemyController zombie = enemigo.GetComponentInParent<EnemyController>();
+
+                if (zombie != null)
+                {
+                    zombie.RecibeDanio(danioAtaque);
+                }
+            }
+        }
+
+        // Permitir atacar nuevamente y desactivar la animación después de un tiempo
+        Invoke(nameof(FinAtaque), 0.5f);
+    }
+
+    public void FinAtaque()
+    {
+        atacando = false;
+
+        // Apaga la animación de ataque
+        if (animator != null)
+        {
+            animator.SetBool("Atacando", false);
+        }
+    }
+
+    // Dibujar el área de ataque en el editor
+    private void OnDrawGizmosSelected()
+    {
+        if (controladorAtaque != null)
+        {
+            Gizmos.color = Color.red;
+            Gizmos.DrawWireSphere(
+                controladorAtaque.position,
+                radioAtaque
+            );
+        }
+    }
+
+    // DIBUJAR EL ÁREA DEL SUELO
     private void OnDrawGizmos()
     {
         Gizmos.color = Color.yellow;
@@ -113,6 +202,7 @@ public class Movimiento2d : MonoBehaviour
         }
     }
 
+    // DAÑO RECIBIDO POR EL JUGADOR
     public void RecibeDanio(Vector2 direccion, int cantDanio)
     {
         if (!recibiendoDanio)
@@ -126,15 +216,18 @@ public class Movimiento2d : MonoBehaviour
                 vida = 0;
             }
 
-            Vector2 rebote = new Vector2(
-                transform.position.x - direccion.x,
-                1
-            ).normalized;
+            if (rb2D != null)
+            {
+                Vector2 rebote = new Vector2(
+                    transform.position.x - direccion.x,
+                    1
+                ).normalized;
 
-            rb2D.AddForce(
-                rebote,
-                ForceMode2D.Impulse
-            );
+                rb2D.AddForce(
+                    rebote,
+                    ForceMode2D.Impulse
+                );
+            }
 
             Invoke(nameof(DesactivaDanio), 0.5f);
         }
