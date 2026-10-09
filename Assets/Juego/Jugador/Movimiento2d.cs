@@ -28,8 +28,10 @@ public class Movimiento2d : MonoBehaviour
     public Animator animator;
 
     private bool atacando;
+    private bool atacandoCuchillo;
 
-    // Variables del ataque
+    // Variables del ataque Melee Puño (Tecla J)
+    [Header("Ataque Melee Puño (Tecla J)")]
     public Transform controladorAtaque;
 
     public float radioAtaque = 0.5f;
@@ -37,6 +39,25 @@ public class Movimiento2d : MonoBehaviour
     public int danioAtaque = 20;
 
     public LayerMask queEsEnemigo;
+
+    // Variables del ataque Melee Cuchillo (Tecla 3)
+    [Header("Ataque Cuchillo (Tecla 3)")]
+    public float radioAtaqueCuchillo = 0.8f; // Algo más de alcance que el puño
+    public int danioCuchillo = 35;          // Mayor daño que el puño
+
+    // Variables del disparo con AR por área (Tecla 2)
+    [Header("Configuración Disparo AR (Tecla 2)")]
+    public float cadenciaDisparoAR = 0.15f;
+    private float tiempoSiguienteDisparoAR = 0f;
+    public Vector2 areaDisparoAR = new Vector2(3.0f, 1.2f);
+    public int danioDisparoAR = 10;
+
+    // Variables del disparo con Pistola por área (Tecla 1)
+    [Header("Configuración Disparo Pistola (Tecla 1)")]
+    public float cadenciaDisparoPistola = 0.35f;
+    private float tiempoSiguienteDisparoPistola = 0f;
+    public Vector2 areaDisparoPistola = new Vector2(2.0f, 1.0f);
+    public int danioDisparoPistola = 15;
 
     private void Awake()
     {
@@ -94,11 +115,21 @@ public class Movimiento2d : MonoBehaviour
             transform.localScale = new Vector3(1, 1, 1);
         }
 
-        // Atacar con la tecla J
+        // Atacar Puño con la tecla J
         if (Keyboard.current != null && Keyboard.current.jKey.wasPressedThisFrame)
         {
             Atacar();
         }
+
+        // Atacar Cuchillo con la tecla 3
+        if (Keyboard.current != null && (Keyboard.current.digit3Key.wasPressedThisFrame || Keyboard.current.numpad3Key.wasPressedThisFrame))
+        {
+            AtacarCuchillo();
+        }
+
+        // CONTROL DE DISPAROS CONTINUOS
+        ManejarDisparoPistola(); // Tecla 1
+        ManejarDisparoAR();      // Tecla 2
     }
 
     private void FixedUpdate()
@@ -123,44 +154,20 @@ public class Movimiento2d : MonoBehaviour
         }
     }
 
-    // ATAQUE DEL JUGADOR
+    // ATAQUE MELEE PUÑO (TECLA J)
     public void Atacar()
     {
-        if (atacando)
-        {
-            return;
-        }
+        if (atacando || atacandoCuchillo) return;
 
         atacando = true;
 
-        // Activa el parámetro "Atacando" (bool) del Animator
         if (animator != null)
         {
             animator.SetBool("Atacando", true);
         }
 
-        // Detección de enemigos
-        if (controladorAtaque != null)
-        {
-            Collider2D[] enemigos = Physics2D.OverlapCircleAll(
-                controladorAtaque.position,
-                radioAtaque,
-                queEsEnemigo
-            );
+        AplicarDanioMelee(radioAtaque, danioAtaque);
 
-            foreach (Collider2D enemigo in enemigos)
-            {
-                // Buscar el script del enemigo
-                EnemyController zombie = enemigo.GetComponentInParent<EnemyController>();
-
-                if (zombie != null)
-                {
-                    zombie.RecibeDanio(transform.position, danioAtaque);
-                }
-            }
-        }
-
-        // Permitir atacar nuevamente y desactivar la animación después de un tiempo
         Invoke(nameof(FinAtaque), 0.5f);
     }
 
@@ -168,27 +175,169 @@ public class Movimiento2d : MonoBehaviour
     {
         atacando = false;
 
-        // Apaga la animación de ataque
         if (animator != null)
         {
             animator.SetBool("Atacando", false);
         }
     }
 
-    // Dibujar el área de ataque en el editor
+    // ATAQUE CUCHILLO (TECLA 3)
+    public void AtacarCuchillo()
+    {
+        if (atacando || atacandoCuchillo) return;
+
+        atacandoCuchillo = true;
+
+        if (animator != null)
+        {
+            animator.SetBool("atacandoCuchillo", true);
+        }
+
+        AplicarDanioMelee(radioAtaqueCuchillo, danioCuchillo);
+
+        Invoke(nameof(FinAtaqueCuchillo), 0.4f);
+    }
+
+    public void FinAtaqueCuchillo()
+    {
+        atacandoCuchillo = false;
+
+        if (animator != null)
+        {
+            animator.SetBool("atacandoCuchillo", false);
+        }
+    }
+
+    private void AplicarDanioMelee(float radio, int danio)
+    {
+        if (controladorAtaque == null) return;
+
+        Collider2D[] enemigos = Physics2D.OverlapCircleAll(
+            controladorAtaque.position,
+            radio,
+            queEsEnemigo
+        );
+
+        foreach (Collider2D enemigo in enemigos)
+        {
+            EnemyController zombie = enemigo.GetComponentInParent<EnemyController>();
+
+            if (zombie != null)
+            {
+                zombie.RecibeDanio(transform.position, danio);
+            }
+        }
+    }
+
+    // CONTROL DISPARO PISTOLA (TECLA 1)
+    private void ManejarDisparoPistola()
+    {
+        bool presionandoTecla1 = false;
+
+        if (Keyboard.current != null)
+        {
+            presionandoTecla1 = Keyboard.current.digit1Key.isPressed || Keyboard.current.numpad1Key.isPressed;
+        }
+
+        if (presionandoTecla1)
+        {
+            if (animator != null)
+            {
+                animator.SetBool("disparandoPistola", true);
+            }
+
+            if (Time.time >= tiempoSiguienteDisparoPistola)
+            {
+                ProcesarDisparoArea(areaDisparoPistola, danioDisparoPistola);
+                tiempoSiguienteDisparoPistola = Time.time + cadenciaDisparoPistola;
+            }
+        }
+        else
+        {
+            if (animator != null)
+            {
+                animator.SetBool("disparandoPistola", false);
+            }
+        }
+    }
+
+    // CONTROL DISPARO AR (TECLA 2)
+    private void ManejarDisparoAR()
+    {
+        bool presionandoTecla2 = false;
+
+        if (Keyboard.current != null)
+        {
+            presionandoTecla2 = Keyboard.current.digit2Key.isPressed || Keyboard.current.numpad2Key.isPressed;
+        }
+
+        if (presionandoTecla2)
+        {
+            if (animator != null)
+            {
+                animator.SetBool("disparando", true);
+            }
+
+            if (Time.time >= tiempoSiguienteDisparoAR)
+            {
+                ProcesarDisparoArea(areaDisparoAR, danioDisparoAR);
+                tiempoSiguienteDisparoAR = Time.time + cadenciaDisparoAR;
+            }
+        }
+        else
+        {
+            if (animator != null)
+            {
+                animator.SetBool("disparando", false);
+            }
+        }
+    }
+
+    private void ProcesarDisparoArea(Vector2 area, int danio)
+    {
+        if (controladorAtaque == null) return;
+
+        Collider2D[] enemigosImpactados = Physics2D.OverlapBoxAll(
+            controladorAtaque.position,
+            area,
+            0f,
+            queEsEnemigo
+        );
+
+        foreach (Collider2D enemigo in enemigosImpactados)
+        {
+            EnemyController zombie = enemigo.GetComponentInParent<EnemyController>();
+
+            if (zombie != null)
+            {
+                zombie.RecibeDanio(transform.position, danio);
+            }
+        }
+    }
+
+    // DIBUJAR ÁREAS EN EL EDITOR DE SCENE
     private void OnDrawGizmosSelected()
     {
         if (controladorAtaque != null)
         {
+            // Círculo Melee Puño (Rojo)
             Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(
-                controladorAtaque.position,
-                radioAtaque
-            );
+            Gizmos.DrawWireSphere(controladorAtaque.position, radioAtaque);
+
+            // Círculo Melee Cuchillo (Amarillo)
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireSphere(controladorAtaque.position, radioAtaqueCuchillo);
+
+            // Caja AR (Cian)
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawWireCube(controladorAtaque.position, areaDisparoAR);
+
+            // Caja Pistola (Verde)
+            Gizmos.color = Color.green;
+            Gizmos.DrawWireCube(controladorAtaque.position, areaDisparoPistola);
         }
     }
 
-    // DIBUJAR EL ÁREA DEL SUELO
     private void OnDrawGizmos()
     {
         Gizmos.color = Color.yellow;
