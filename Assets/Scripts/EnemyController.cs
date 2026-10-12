@@ -8,6 +8,10 @@ public class EnemyController : MonoBehaviour
     public float speed = 2.0f;
     public int cantidadDanio = 10;
     public int vida = 100;
+    private int vidaMaxima;
+
+    [Header("UI Barra de Vida")]
+    public BarraVidaEnemigo barraVida;
 
     [Header("Ataque del Zombi")]
     public float tiempoEntreAtaques = 1.0f;
@@ -28,6 +32,14 @@ public class EnemyController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponent<Animator>();
+
+        vidaMaxima = vida;
+
+        // Inicializar la barra de vida sobre el zombi
+        if (barraVida != null)
+        {
+            barraVida.InicializarVida(vidaMaxima);
+        }
 
         if (player == null)
         {
@@ -64,6 +76,12 @@ public class EnemyController : MonoBehaviour
                 transform.localScale = new Vector3(1, 1, 1);
             }
 
+            // Evita que la barra de vida se voltee al girar el zombi
+            if (barraVida != null)
+            {
+                barraVida.transform.localScale = new Vector3(Mathf.Sign(transform.localScale.x) * 0.01f, 0.01f, 0.01f);
+            }
+
             movement = new Vector2(direction.x, 0);
             enMovimiento = true;
         }
@@ -98,6 +116,12 @@ public class EnemyController : MonoBehaviour
 
         vida -= cantidadDanioRecibido;
         Debug.Log("¡El zombi recibió daño! Vida restante: " + vida);
+
+        // Actualizar la barra flotante
+        if (barraVida != null)
+        {
+            barraVida.ActualizarVida(vida);
+        }
 
         if (vida <= 0)
         {
