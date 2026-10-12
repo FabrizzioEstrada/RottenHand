@@ -297,10 +297,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   player: {fileID: 1754109490}
   detectionRadius: 5
-  attackRadius: 1.2
   speed: 2
   cantidadDanio: 10
-  cooldownAtaque: 1.5
+  vida: 100
+  tiempoEntreAtaques: 1
+  fuerzaEmpuje: 5
+  duracionEmpuje: 0.5
 --- !u!95 &99884660
 Animator:
   serializedVersion: 7
@@ -1440,6 +1442,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 878275388}
+  - {fileID: 1978301356}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!61 &1754109491
@@ -1512,6 +1515,20 @@ MonoBehaviour:
   enSuelo: 0
   vida: 100
   animator: {fileID: 1754109493}
+  controladorAtaque: {fileID: 1978301356}
+  radioAtaque: 0.9
+  danioAtaque: 5
+  queEsEnemigo:
+    serializedVersion: 2
+    m_Bits: 1
+  radioAtaqueCuchillo: 0.9
+  danioCuchillo: 10
+  cadenciaDisparoAR: 0.15
+  areaDisparoAR: {x: 7.78, y: 1.2}
+  danioDisparoAR: 30
+  cadenciaDisparoPistola: 0.35
+  areaDisparoPistola: {x: 5.78, y: 1.2}
+  danioDisparoPistola: 20
 --- !u!95 &1754109493
 Animator:
   serializedVersion: 7
@@ -1796,6 +1813,37 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1869391333}
   m_Mesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &1978301355
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1978301356}
+  m_Layer: 0
+  m_Name: ControladorAtaque
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1978301356
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1978301355}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1754109490}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2019218019
 GameObject:
   m_ObjectHideFlags: 0
